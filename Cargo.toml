@@ -1,0 +1,10 @@
+[package]
+name = "payments"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+chrono = "0.4.41"
+reqwest = "0.12.15"
+sqlx = { version = "0.8.5", features = ["mysql", "chrono"] }
+tokio = "1.45.0"
