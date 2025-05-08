@@ -21,7 +21,7 @@ impl Payment {
             id: row.get("id"),
             user_id: row.get("user_id"),
             course_id: row.get("course_id"),
-            purchase_time: row.get("time"),
+            purchase_time: row.get("purchase_time"),
         })
     }
 }

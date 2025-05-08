@@ -4,7 +4,9 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+axum = "0.8.4"
 chrono = "0.4.41"
 reqwest = "0.12.15"
+serde = "1.0.219"
 sqlx = { version = "0.8.5", features = ["mysql", "chrono"] }
 tokio = "1.45.0"
