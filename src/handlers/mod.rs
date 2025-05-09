@@ -1,1 +1,1 @@
-mod purchase;
+pub mod purchase;
