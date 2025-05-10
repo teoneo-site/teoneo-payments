@@ -3,6 +3,7 @@ use crate::database::PaymentDB;
 use axum::{extract::State, response::Redirect, Json};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 #[derive(Serialize, Deserialize)]
 pub struct PurchaseData {
@@ -37,11 +38,8 @@ struct Metadata {
     course_id: i64,
 }
 
-fn get_idempotence_key() -> usize {
-    std::env::var("IDEMPOTENCE_KEY")
-        .expect("Нету ключа")
-        .parse()
-        .expect("Это точно число, Err не будет")
+fn get_idempotence_key() -> Uuid {
+    Uuid::new_v4()
 }
 
 pub async fn redirect_for_payment(
@@ -83,7 +81,7 @@ pub async fn redirect_for_payment(
     match client
         .post("https://api.yookassa.ru/v3/payments")
         .basic_auth("No username(((", Some("No password((("))
-        .header("Idempotence-Key", get_idempotence_key())
+        .header("Idempotence-Key", get_idempotence_key().to_string())
         .json(&payment_request_data)
         .send()
         .await
