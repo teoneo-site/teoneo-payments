@@ -1,15 +1,6 @@
-use crate::database::PaymentDB;
 use crate::crypt;
-use axum::{
-    http::StatusCode,
-    extract::State,
-    response::{IntoResponse, Redirect},
-    Json,
-};
-use axum_extra::{
-    headers::{Authorization, authorization::Bearer},
-    TypedHeader,
-};
+use crate::database::PaymentDB;
+use axum::{extract::State, response::Redirect, Json};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 
@@ -37,6 +28,13 @@ struct PaymentRequest {
     capture: bool,
     confirmation: Confirmation,
     description: String,
+    metadata: Metadata,
+}
+
+#[derive(Serialize, Deserialize)]
+struct Metadata {
+    user_id: i64,
+    course_id: i64,
 }
 
 fn get_idempotence_key() -> usize {
@@ -50,7 +48,7 @@ pub async fn redirect_for_payment(
     State(database): State<PaymentDB>,
     claims: crypt::Claims,
     Json(data): Json<PurchaseData>,
-) -> Result<Redirect, crypt::ErrorJSON> {
+) -> Result<Redirect, crypt::ErrorMsg> {
     let client = Client::new();
 
     let amount = Amount {
@@ -76,14 +74,15 @@ pub async fn redirect_for_payment(
         capture: true,
         confirmation,
         description: String::from("Хз че тут написать, потом дополнить надо"),
+        metadata: Metadata {
+            user_id: claims.id,
+            course_id: data.course_id,
+        },
     };
 
     match client
         .post("https://api.yookassa.ru/v3/payments")
-        .basic_auth(
-            "No username(((",
-            Some("No password((("),
-        )
+        .basic_auth("No username(((", Some("No password((("))
         .header("Idempotence-Key", get_idempotence_key())
         .json(&payment_request_data)
         .send()
