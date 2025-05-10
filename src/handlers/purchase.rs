@@ -1,8 +1,14 @@
 use crate::database::PaymentDB;
+use crate::crypt;
 use axum::{
+    http::StatusCode,
     extract::State,
     response::{IntoResponse, Redirect},
     Json,
+};
+use axum_extra::{
+    headers::{Authorization, authorization::Bearer},
+    TypedHeader,
 };
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
@@ -10,7 +16,6 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize)]
 pub struct PurchaseData {
     course_id: i64,
-    user_id: i64,
 }
 
 #[derive(Serialize)]
@@ -43,8 +48,9 @@ fn get_idempotence_key() -> usize {
 
 pub async fn redirect_for_payment(
     State(database): State<PaymentDB>,
+    claims: crypt::Claims,
     Json(data): Json<PurchaseData>,
-) -> impl IntoResponse {
+) -> Result<Redirect, crypt::ErrorJSON> {
     let client = Client::new();
 
     let amount = Amount {
@@ -88,5 +94,5 @@ pub async fn redirect_for_payment(
     }
 
     let purchase_url = "https://api.yookassa.ru/v3/payments";
-    Redirect::to(purchase_url)
+    Ok(Redirect::to(purchase_url))
 }

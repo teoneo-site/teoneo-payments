@@ -1,4 +1,5 @@
 mod database;
+mod crypt;
 mod handlers;
 
 use axum::{routing::post, Router};
