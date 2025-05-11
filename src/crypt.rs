@@ -10,13 +10,13 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
 pub struct ErrorJSON {
-    error_type: String,
-    error_message: String,
+    pub error_type: String,
+    pub error_message: String,
 }
 
 pub struct ErrorMsg {
-    json_data: ErrorJSON,
-    status_code: StatusCode,
+    pub json_data: ErrorJSON,
+    pub status_code: StatusCode,
 }
 
 impl IntoResponse for ErrorMsg {
@@ -50,13 +50,24 @@ impl<S: Send + Sync> FromRequestParts<S> for Claims {
         })?;
 
         // Преобразование заголовка в строку
-        let token = auth_header.to_str().map_err(|_| ErrorMsg {
-            json_data: ErrorJSON {
-                error_type: "BadRequest".to_string(),
-                error_message: "Не получается преобразовать заголовок".to_string(),
-            },
-            status_code: StatusCode::BAD_REQUEST,
-        })?;
+        let token = auth_header
+            .to_str()
+            .map_err(|_| ErrorMsg {
+                json_data: ErrorJSON {
+                    error_type: "BadRequest".to_string(),
+                    error_message: "Не получается преобразовать заголовок".to_string(),
+                },
+                status_code: StatusCode::BAD_REQUEST,
+            })?
+            .split_ascii_whitespace()
+            .nth(1)
+            .ok_or(ErrorMsg {
+                json_data: ErrorJSON {
+                    error_type: String::from("BadRequest"),
+                    error_message: String::from("Заголовок в неправильном формате"),
+                },
+                status_code: StatusCode::BAD_REQUEST,
+            })?;
 
         // Декодирование токена
         let key = DecodingKey::from_secret(std::env::var("SECRET_WORD_JWT").unwrap().as_ref());

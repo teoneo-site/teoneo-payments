@@ -1,8 +1,9 @@
-use crate::crypt;
+use crate::crypt::{self, ErrorJSON, ErrorMsg};
 use crate::database::PaymentDB;
 use axum::{extract::State, response::Redirect, Json};
-use reqwest::Client;
+use reqwest::{Client, StatusCode};
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use uuid::Uuid;
 
 #[derive(Serialize, Deserialize)]
@@ -30,6 +31,13 @@ struct PaymentRequest {
     confirmation: Confirmation,
     description: String,
     metadata: Metadata,
+}
+
+#[derive(Deserialize)]
+struct ConfirmationAnswer {
+    #[serde(rename = "type")]
+    _confirmation_type: String,
+    confirmation_url: String,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -86,10 +94,28 @@ pub async fn redirect_for_payment(
         .send()
         .await
     {
-        Ok(res) => println!("{:?}", res),
-        Err(err) => eprintln!("Ошибка с запросом: {}", err),
-    }
 
-    let purchase_url = "https://api.yookassa.ru/v3/payments";
-    Ok(Redirect::to(purchase_url))
+        Ok(res) => {
+            let data = res.json::<Value>().await.map_err(|_| ErrorMsg {
+                json_data: ErrorJSON {
+                    error_type: String::from("BadRequest"),
+                    error_message: String::from("Ответ от платежки пришел без JSON"),
+                },
+                status_code: StatusCode::BAD_REQUEST,
+            })?;
+
+            let confirmation =
+                serde_json::from_value::<ConfirmationAnswer>(data["confirmation"].clone()).unwrap();
+
+            Ok(Redirect::to(&confirmation.confirmation_url))
+        }
+
+        Err(err) => Err(ErrorMsg {
+            json_data: ErrorJSON {
+                error_type: String::from("InternalServerError"),
+                error_message: String::from(format!("Проблема на стороне платежки: {err}")),
+            },
+            status_code: StatusCode::INTERNAL_SERVER_ERROR,
+        }),
+    }
 }
