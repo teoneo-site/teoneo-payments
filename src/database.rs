@@ -42,14 +42,26 @@ impl PaymentDB {
         course_id: i64,
         time: NaiveDateTime,
     ) -> Result<(), sqlx::Error> {
+        let mut transaction = self.pool.begin().await?;
+        // Эти 2 запроса отправляют atomicaly (все или ничего), чтобы это сделать в mySql, нужно использовать транзакции
+        // Если один из запросов фейлится то на drop() вызывается rollback() и изменения отменяются
+
         sqlx::query(
-            "INSERT INTO (user_id, course_id, purchase_time) payment_history VALUES (?, ?, ?)",
+            "INSERT INTO payment_history (user_id, course_id, purchase_time) VALUES (?, ?, ?)",
         )
         .bind(user_id)
         .bind(course_id)
         .bind(time)
-        .execute(&self.pool)
-        .await?;
+        .execute(&mut *transaction)
+        .await?; 
+        // payments_history используется как чек, где будут и успешные оплаты и не успешные
+        sqlx::query("INSERT INTO user_courses (user_id, course_id) VALUES (?, ?)")
+            .bind(user_id)
+            .bind(course_id)
+            .execute(&mut *transaction)
+            .await?;
+
+        transaction.commit().await?;
         Ok(())
     }
 
@@ -57,7 +69,7 @@ impl PaymentDB {
     /// Назвал не new, потому что Result
     pub async fn get_pool() -> Result<Self, sqlx::Error> {
         Ok(Self {
-            pool: MySqlPool::connect("mariadb://root:root@localhost/teoneo").await?,
+            pool: MySqlPool::connect(&std::env::var("DATABASE_URL").expect("No database url variable in .env")).await?,
         })
     }
 
