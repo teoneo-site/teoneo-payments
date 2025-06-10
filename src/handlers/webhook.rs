@@ -1,7 +1,6 @@
 use super::metadata::Metadata;
 use crate::database::PaymentDB;
 use axum::{extract::State, response::IntoResponse, Json};
-use chrono::Utc;
 use reqwest::StatusCode;
 use serde_json::Value;
 
@@ -15,7 +14,7 @@ pub async fn handle_webhook(
     };
 
     match database
-        .register_payment(metadata.user_id, metadata.course_id, Utc::now().naive_utc())
+        .register_payment(metadata.user_id, metadata.course_id)
         .await
     {
         Ok(_) => (StatusCode::OK, "Okay"),

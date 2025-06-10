@@ -40,18 +40,16 @@ impl PaymentDB {
         self,
         user_id: i64,
         course_id: i64,
-        time: NaiveDateTime,
     ) -> Result<(), sqlx::Error> {
         let mut transaction = self.pool.begin().await?;
         // Эти 2 запроса отправляют atomicaly (все или ничего), чтобы это сделать в mySql, нужно использовать транзакции
         // Если один из запросов фейлится то на drop() вызывается rollback() и изменения отменяются
 
         sqlx::query(
-            "INSERT INTO payment_history (user_id, course_id, purchase_time) VALUES (?, ?, ?)",
+            "INSERT INTO payment_history (user_id, course_id) VALUES (?, ?)",
         )
         .bind(user_id)
         .bind(course_id)
-        .bind(time)
         .execute(&mut *transaction)
         .await?; 
         // payments_history используется как чек, где будут и успешные оплаты и не успешные
